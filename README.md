@@ -1,3 +1,4 @@
+Try it here! https://infinite-canvas-gilt.vercel.app
 # Infinity Board 🎨
 
 A infinite canvas whiteboard app I built because I got frustrated with existing ones. Miro is too expensive, Excalidraw doesn't have good pen support, and I wanted something that works offline.
