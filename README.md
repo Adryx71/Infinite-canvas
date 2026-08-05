@@ -1,18 +1,18 @@
 Try it here! https://infinite-canvas-gilt.vercel.app
+
 # Infinity Board 🎨
 
-A infinite canvas whiteboard app I built because I got frustrated with existing ones. Miro is too expensive, Excalidraw doesn't have good pen support, and I wanted something that works offline.
+A infinite canvas whiteboard app I built because I got frustrated with existing ones. My college professors used Microsoft Whiteboard, and the experience was frustrating. Most alternatives were paid, so I decided to build my own.
 
 ## Why I Built This
 
-I'm a college student who takes a lot of notes on my iPad. I tried every whiteboard app out there but they all had problems:
+I'm a college student. I tried every whiteboard app out there but they all had problems:
 
 - **Miro** - $8/month? For a whiteboard? No thanks
-- **Excalidraw** - Great but no pressure-sensitive drawing
 - **Figma** - Overkill for simple notes
 - **Notion** - Can't draw properly
 
-So I decided to build my own. Took about 2 weeks of late nights and way too much coffee ☕
+So I decided to build my own.
 
 ## Features (What Actually Works)
 
@@ -29,7 +29,7 @@ So I decided to build my own. Took about 2 weeks of late nights and way too much
 
 ## Tech Stack
 
-- **React 19** - Because I already know it
+- **React 19** - Because why not
 - **PixiJS 8** - WebGL rendering is fast
 - **Zustand** - State management that doesn't suck
 - **Dexie** - IndexedDB wrapper (way easier than raw IDB)
@@ -70,11 +70,11 @@ Building this taught me a lot:
 
 ## License
 
-MIT License - do whatever you want with it
+License - do whatever you want with it
 
 ## Contact
 
-If you have suggestions or find bugs, open an issue. I'm a student so responses might be slow during exam season 😅
+If you have suggestions or find bugs, open an issue.
 
 ---
 
