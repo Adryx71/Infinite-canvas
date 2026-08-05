@@ -52,7 +52,6 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  // NOTE: The Map usage here is a bit weird for Zustand but it works
   currentPageId: null,
   currentNotebookId: null,
   viewportX: 0,
@@ -80,12 +79,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ viewportX: state.viewportX + dx, viewportY: state.viewportY + dy });
   },
   
-  zoomAt: (point, delta) => {
+  zoomAt: (screenPoint, delta) => {
     const state = get();
     const newZoom = Math.max(0.05, Math.min(10, state.zoom * (1 + delta)));
-    const zoomRatio = newZoom / state.zoom;
-    const newViewportX = point.x - (point.x - state.viewportX) * zoomRatio;
-    const newViewportY = point.y - (point.y - state.viewportY) * zoomRatio;
+    // Convert screen point to world coordinates BEFORE zoom
+    const worldX = screenPoint.x / state.zoom + state.viewportX;
+    const worldY = screenPoint.y / state.zoom + state.viewportY;
+    // After zoom, keep the same world point under the cursor:
+    // screenPoint = (worldX - newViewportX) * newZoom
+    // newViewportX = worldX - screenPoint / newZoom
+    const newViewportX = worldX - screenPoint.x / newZoom;
+    const newViewportY = worldY - screenPoint.y / newZoom;
     set({ zoom: newZoom, viewportX: newViewportX, viewportY: newViewportY });
   },
   
