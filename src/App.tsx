@@ -53,11 +53,13 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
 }
 
 function App() {
-  // TODO: This component is doing too much. Should probably move init logic somewhere else
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleCallbackRef = useRef<ReturnType<typeof requestIdleCallback> | null>(null);
   const versionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initializedRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const savingRef = useRef(false);
 
   const { theme, setTheme } = useUIStore();
   const { currentPageId, background, loadPage } = useCanvasStore();
@@ -103,6 +105,7 @@ function App() {
       gestureHandler.detach();
       canvasEngine.destroy();
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      if (idleCallbackRef.current) cancelIdleCallback(idleCallbackRef.current);
       if (versionTimerRef.current) clearInterval(versionTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,57 +118,88 @@ function App() {
 
   // Autosave handler - always reads fresh state to avoid stale closures
   const handleAutosave = useCallback(async () => {
-    const state = useCanvasStore.getState();
-    const pid = state.currentPageId;
-    if (!pid) return;
+    if (savingRef.current) return; // don't stack saves
+    savingRef.current = true;
+    dirtyRef.current = false;
 
-    const allObjects = Array.from(state.objects.values());
-    const strokes = allObjects.filter(o => o.kind === 'stroke');
-    const shapes = allObjects.filter(o => o.kind === 'shape');
+    try {
+      const state = useCanvasStore.getState();
+      const pid = state.currentPageId;
+      if (!pid) return;
 
-    await pageRepo.update(pid, {
-      viewport: { x: state.viewportX, y: state.viewportY },
-      zoom: state.zoom,
-      background: state.background,
-    });
+      const allObjects = Array.from(state.objects.values());
+      const strokes = allObjects.filter(o => o.kind === 'stroke');
+      const shapes = allObjects.filter(o => o.kind === 'shape');
 
-    // Sync strokes: upsert current ones, delete any erased/undone from DB
-    await strokeRepo.syncPage(pid, strokes);
-    // Sync shapes: upsert current ones, delete any erased/undone from DB
-    await shapeRepo.syncPage(pid, shapes);
+      await pageRepo.update(pid, {
+        viewport: { x: state.viewportX, y: state.viewportY },
+        zoom: state.zoom,
+        background: state.background,
+      });
 
-    // Persist settings
-    const uiState = useUIStore.getState();
-    await settingsRepo.save({
-      theme: uiState.theme,
-      toolSettings: uiState.toolSettings,
-      recentColors: uiState.recentColors,
-      smartShapeRecognition: uiState.smartShapeRecognition,
-      miniMapVisible: uiState.miniMapVisible,
-      highContrast: uiState.highContrast,
-    });
+      // Sync strokes: upsert current ones, delete any erased/undone from DB
+      await strokeRepo.syncPage(pid, strokes);
+      // Sync shapes: upsert current ones, delete any erased/undone from DB
+      await shapeRepo.syncPage(pid, shapes);
+
+      // Persist settings
+      const uiState = useUIStore.getState();
+      await settingsRepo.save({
+        theme: uiState.theme,
+        toolSettings: uiState.toolSettings,
+        recentColors: uiState.recentColors,
+        smartShapeRecognition: uiState.smartShapeRecognition,
+        miniMapVisible: uiState.miniMapVisible,
+        highContrast: uiState.highContrast,
+      });
+    } finally {
+      savingRef.current = false;
+      // If something changed while we were saving, schedule another save
+      if (dirtyRef.current) {
+        scheduleSave();
+      }
+    }
   }, []);
 
-  // Listen for autosave events
+  // Schedule a save — uses requestIdleCallback when available, falls back to short debounce
+  const scheduleSave = useCallback(() => {
+    dirtyRef.current = true;
+    if (savingRef.current) return; // save in progress, will re-schedule when done
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
+    // requestIdleCallback: save when browser is idle (best for perf)
+    if ('requestIdleCallback' in window) {
+      if (idleCallbackRef.current) cancelIdleCallback(idleCallbackRef.current);
+      idleCallbackRef.current = requestIdleCallback(() => {
+        handleAutosave();
+      }, { timeout: 300 }); // ensure save within 300ms even if never idle
+    } else {
+      // Fallback: short 200ms debounce
+      autosaveTimerRef.current = setTimeout(handleAutosave, 200);
+    }
+  }, [handleAutosave]);
+
+  // Listen for autosave events — 200ms debounce instead of 500ms
   useEffect(() => {
-    const handler = () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = setTimeout(handleAutosave, 500);
-    };
+    const handler = () => scheduleSave();
 
     window.addEventListener('infinity-board:autosave', handler);
     return () => window.removeEventListener('infinity-board:autosave', handler);
-  }, [handleAutosave]);
+  }, [scheduleSave]);
 
   // Save immediately before page unload — prevents data loss on refresh/close
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Cancel any pending debounced save and run immediately
+      // Cancel any pending debounced/idle save and run immediately
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      if (idleCallbackRef.current) cancelIdleCallback(idleCallbackRef.current);
       handleAutosave();
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+        if (idleCallbackRef.current) cancelIdleCallback(idleCallbackRef.current);
         handleAutosave();
       }
     };
