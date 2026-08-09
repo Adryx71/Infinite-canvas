@@ -182,7 +182,7 @@ export function Toolbar() {
                 <input
                   type="range"
                   min="1"
-                  max={activeTool === 'marker' || activeTool === 'highlighter' ? '60' : activeTool === 'shapes' ? '20' : '40'}
+                  max={activeTool === 'eraser' ? '400' : activeTool === 'marker' || activeTool === 'highlighter' ? '60' : activeTool === 'shapes' ? '20' : '40'}
                   value={settings.thickness}
                   onChange={(e) => {
                     const val = Number(e.target.value);
