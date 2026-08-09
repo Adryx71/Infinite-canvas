@@ -33,7 +33,7 @@ const PRIMARY_COLORS_DARK = ['#FFFFFF', '#EF4444', '#3B82F6', '#10B981', '#F59E0
 
 export function Toolbar() {
   const { activeTool, setActiveTool, activeShape, setActiveShape, currentPageId, clearObjects } = useCanvasStore();
-  const { toolbarOpacity, updateToolSettings, getToolSettings } = useUIStore();
+  const { toolbarOpacity, updateToolSettings, getToolSettings, toolbarPosition } = useUIStore();
   const { canUndo, canRedo } = useUndoRedoStore();
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showBrushSettings, setShowBrushSettings] = useState(false);
@@ -69,7 +69,6 @@ export function Toolbar() {
       if (!activeShape) setActiveShape('rectangle');
       return;
     }
-    // If tapping the same drawing tool, toggle its brush settings popover
     if (tool === activeTool && isDrawingTool) {
       setShowBrushSettings(!showBrushSettings);
     } else {
@@ -114,7 +113,6 @@ export function Toolbar() {
 
   const confirmClearAll = () => {
     setShowClearConfirm(false);
-    // Push undo state before clearing
     if (currentPageId) {
       const { pushUndo } = useUndoRedoStore.getState();
       const currentObjects = Array.from(useCanvasStore.getState().objects.values());
@@ -124,53 +122,93 @@ export function Toolbar() {
     canvasEngine.requestRender();
   };
 
+  // Position classes based on toolbarPosition
+  const isVertical = toolbarPosition === 'left' || toolbarPosition === 'right';
+  
+  const containerClasses = {
+    bottom: 'fixed bottom-0 left-0 right-0 z-[60] pointer-events-none flex justify-center pb-4 px-2',
+    left: 'fixed left-0 top-0 bottom-0 z-[60] pointer-events-none flex items-center pl-4 py-2',
+    right: 'fixed right-0 top-0 bottom-0 z-[60] pointer-events-none flex items-center pr-4 py-2',
+  };
+
+  const innerClasses = {
+    bottom: 'pointer-events-auto relative',
+    left: 'pointer-events-auto relative flex flex-col',
+    right: 'pointer-events-auto relative flex flex-col',
+  };
+
+  const initialAnimation = {
+    bottom: { y: 100, opacity: 0 },
+    left: { x: -100, opacity: 0 },
+    right: { x: 100, opacity: 0 },
+  };
+
+  const animateAnimation = {
+    bottom: { y: 0, opacity: toolbarOpacity },
+    left: { x: 0, opacity: toolbarOpacity },
+    right: { x: 0, opacity: toolbarOpacity },
+  };
+
+  // Brush settings popover position
+  const brushSettingsPosition = {
+    bottom: 'absolute bottom-full mb-3 left-1/2 -translate-x-1/2',
+    left: 'absolute left-full ml-3 top-1/2 -translate-y-1/2',
+    right: 'absolute right-full mr-3 top-1/2 -translate-y-1/2',
+  };
+
+  // Shape picker position
+  const shapePickerPosition = {
+    bottom: 'absolute bottom-full mb-3 left-1/2 -translate-x-1/2',
+    left: 'absolute left-full ml-3 top-0',
+    right: 'absolute right-full mr-3 top-0',
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-none flex justify-center pb-4 px-2">
+    <div className={containerClasses[toolbarPosition]}>
       <motion.div
-        className="pointer-events-auto relative"
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: toolbarOpacity }}
+        className={innerClasses[toolbarPosition]}
+        initial={initialAnimation[toolbarPosition]}
+        animate={animateAnimation[toolbarPosition]}
         transition={{ duration: 0.2, ease: 'easeOut' }}
       >
-        {/* Brush Settings Popover — shows above toolbar when a drawing tool is active */}
+        {/* Brush Settings Popover */}
         <AnimatePresence>
           {showBrushSettings && isDrawingTool && (
             <motion.div
               ref={brushSettingsRef}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 glassmorphism rounded-2xl p-4 min-w-[200px] z-10"
+              className={`${brushSettingsPosition[toolbarPosition]} glassmorphism rounded-2xl p-4 min-w-[200px] z-10`}
             >
-              {/* Color Grid — 2×3 primary colors (hidden for eraser) */}
+              {/* Color Grid */}
               {activeTool !== 'eraser' && (
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {PRIMARY_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      updateToolSettings(activeTool, { color });
-                      // If shapes are selected, apply color to them in real-time
-                      if (activeTool === 'shapes') {
-                        const { selectedObjectIds, objects, updateObject } = useCanvasStore.getState();
-                        selectedObjectIds.forEach((id) => {
-                          const obj = objects.get(id);
-                          if (obj?.kind === 'shape') {
-                            updateObject(id, { strokeColor: color });
-                          }
-                        });
-                        canvasEngine.requestRender();
-                      }
-                    }}
-                    className="w-10 h-10 rounded-full border-2 transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: color,
-                      borderColor: settings.color === color ? '#3B82F6' : 'transparent',
-                    }}
-                  />
-                ))}
-              </div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {PRIMARY_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        updateToolSettings(activeTool, { color });
+                        if (activeTool === 'shapes') {
+                          const { selectedObjectIds, objects, updateObject } = useCanvasStore.getState();
+                          selectedObjectIds.forEach((id) => {
+                            const obj = objects.get(id);
+                            if (obj?.kind === 'shape') {
+                              updateObject(id, { strokeColor: color });
+                            }
+                          });
+                          canvasEngine.requestRender();
+                        }
+                      }}
+                      className="w-10 h-10 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{
+                        backgroundColor: color,
+                        borderColor: settings.color === color ? '#3B82F6' : 'transparent',
+                      }}
+                    />
+                  ))}
+                </div>
               )}
 
               {/* Thickness Slider */}
@@ -202,50 +240,50 @@ export function Toolbar() {
                 />
               </div>
 
-              {/* Opacity Slider (hidden for eraser) */}
+              {/* Opacity Slider */}
               {activeTool !== 'eraser' && (
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Opacity</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{Math.round(settings.opacity * 100)}%</span>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Opacity</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{Math.round(settings.opacity * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={Math.round(settings.opacity * 100)}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) / 100;
+                      updateToolSettings(activeTool, { opacity: val });
+                      if (activeTool === 'shapes') {
+                        const { selectedObjectIds, objects, updateObject } = useCanvasStore.getState();
+                        selectedObjectIds.forEach((id) => {
+                          const obj = objects.get(id);
+                          if (obj?.kind === 'shape') {
+                            updateObject(id, { opacity: val });
+                          }
+                        });
+                        canvasEngine.requestRender();
+                      }
+                    }}
+                    className="w-full accent-blue-500"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={Math.round(settings.opacity * 100)}
-                  onChange={(e) => {
-                    const val = Number(e.target.value) / 100;
-                    updateToolSettings(activeTool, { opacity: val });
-                    if (activeTool === 'shapes') {
-                      const { selectedObjectIds, objects, updateObject } = useCanvasStore.getState();
-                      selectedObjectIds.forEach((id) => {
-                        const obj = objects.get(id);
-                        if (obj?.kind === 'shape') {
-                          updateObject(id, { opacity: val });
-                        }
-                      });
-                      canvasEngine.requestRender();
-                    }
-                  }}
-                  className="w-full accent-blue-500"
-                />
-              </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Shape Picker Dropdown — must be outside scrollable container to avoid clipping */}
+        {/* Shape Picker Dropdown */}
         <AnimatePresence>
           {showShapePicker && (
             <motion.div
               ref={shapePickerRef}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 glassmorphism rounded-2xl p-2 flex gap-1 z-10"
+              className={`${shapePickerPosition[toolbarPosition]} glassmorphism rounded-2xl p-2 flex gap-1 z-10 ${isVertical ? 'flex-col' : ''}`}
             >
               {shapeOptions.map(({ id, icon: Icon, label }) => (
                 <button
@@ -264,7 +302,7 @@ export function Toolbar() {
           )}
         </AnimatePresence>
 
-        <div className="glassmorphism rounded-3xl px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-0.5 sm:gap-1 overflow-x-auto max-w-full no-scrollbar">
+        <div className={`glassmorphism rounded-3xl px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-0.5 sm:gap-1 max-w-full no-scrollbar ${isVertical ? 'flex-col overflow-y-auto max-h-full' : 'flex-row overflow-x-auto'}`}>
           {/* Drawing Tools */}
           {drawingTools.map(({ id, icon: Icon, label }) => (
             <button
@@ -293,7 +331,7 @@ export function Toolbar() {
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <div className={`${isVertical ? 'w-6 h-px' : 'w-px h-6'} bg-gray-300 dark:bg-gray-600 mx-1`} />
 
           {/* Undo/Redo */}
           <button
@@ -316,9 +354,9 @@ export function Toolbar() {
           </button>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <div className={`${isVertical ? 'w-6 h-px' : 'w-px h-6'} bg-gray-300 dark:bg-gray-600 mx-1`} />
 
-          {/* Clear All Button — wide red button */}
+          {/* Clear All Button */}
           <button
             onClick={handleClearAll}
             className="toolbar-btn flex items-center justify-center gap-1.5 px-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors"

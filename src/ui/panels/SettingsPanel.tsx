@@ -1,9 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Layers, Github } from 'lucide-react';
+import { X, Github, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useUIStore } from '../../state/uiStore';
 
 export function SettingsPanel() {
-  const { isSettingsPanelOpen, closeSettingsPanel, smartShapeRecognition, setSmartShapeRecognition } = useUIStore();
+  const { isSettingsPanelOpen, closeSettingsPanel, toolbarPosition, setToolbarPosition } = useUIStore();
+
+  const positions = [
+    { id: 'bottom' as const, label: 'Bottom', icon: ArrowDown },
+    { id: 'left' as const, label: 'Left', icon: ArrowLeft },
+    { id: 'right' as const, label: 'Right', icon: ArrowRight },
+  ];
 
   return (
     <AnimatePresence>
@@ -37,30 +43,26 @@ export function SettingsPanel() {
               </div>
 
               {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Features */}
+              <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+                {/* Toolbar Position */}
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Features</h3>
-                  <button
-                    onClick={() => setSmartShapeRecognition(!smartShapeRecognition)}
-                    className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
-                      smartShapeRecognition
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        smartShapeRecognition ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-                      }`}>
-                        <Layers size={16} />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800 dark:text-gray-200 text-sm">Smart Shape Recognition</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Auto-convert rough sketches to perfect shapes</div>
-                      </div>
-                    </div>
-                  </button>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Toolbar Position</h3>
+                  <div className="flex flex-col gap-2">
+                    {positions.map(({ id, label, icon: Icon }) => (
+                      <button
+                        key={id}
+                        onClick={() => setToolbarPosition(id)}
+                        className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 transition-all ${
+                          toolbarPosition === id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <Icon size={16} />
+                        <span className="text-sm font-medium">{label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

@@ -8,7 +8,7 @@ import type { Page } from '../../types';
 
 export function PageNavigator() {
   const { currentPageId, currentNotebookId, loadPage, setBackground } = useCanvasStore();
-  const { addToast } = useUIStore();
+  const { addToast, toolbarPosition } = useUIStore();
   const [pages, setPages] = useState<Page[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -121,12 +121,19 @@ export function PageNavigator() {
 
   if (pages.length === 0) return null;
 
+  // Position classes based on toolbarPosition
+  const positionClasses = {
+    bottom: 'fixed bottom-[5rem] sm:bottom-20 left-2 sm:left-3 z-[55] pointer-events-none safe-left safe-bottom',
+    left: 'fixed left-[5rem] sm:left-20 bottom-2 sm:left-3 z-[55] pointer-events-none safe-left safe-bottom',
+    right: 'fixed right-[5rem] sm:right-20 bottom-2 sm:right-3 z-[55] pointer-events-none safe-right safe-bottom',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2, delay: 0.15 }}
-      className="fixed bottom-[5rem] sm:bottom-20 left-2 sm:left-3 z-[55] pointer-events-none safe-left safe-bottom"
+      className={positionClasses[toolbarPosition]}
     >
       <div className="pointer-events-auto glassmorphism rounded-2xl px-1.5 py-1 flex items-center gap-0.5">
         {/* Previous Page Button */}

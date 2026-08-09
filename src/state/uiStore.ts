@@ -23,6 +23,9 @@ interface UIState {
   smartShapeRecognition: boolean;
   highContrast: boolean;
   
+  // Toolbar
+  toolbarPosition: 'bottom' | 'left' | 'right';
+  
   // Toast
   toasts: Array<{ id: string; message: string; type: 'info' | 'success' | 'error' | 'undo'; action?: () => void }>;
   
@@ -42,6 +45,7 @@ interface UIState {
   addRecentColor: (color: string) => void;
   setSmartShapeRecognition: (enabled: boolean) => void;
   setHighContrast: (enabled: boolean) => void;
+  setToolbarPosition: (position: 'bottom' | 'left' | 'right') => void;
   addToast: (message: string, type?: 'info' | 'success' | 'error' | 'undo', action?: () => void) => void;
   removeToast: (id: string) => void;
   loadSettings: (settings: Partial<UIState>) => void;
@@ -68,6 +72,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   recentColors: ['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'],
   smartShapeRecognition: false,
   highContrast: false,
+  toolbarPosition: 'bottom',
   toasts: [],
   
   setTheme: (theme) => {
@@ -112,6 +117,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   
   setSmartShapeRecognition: (enabled) => set({ smartShapeRecognition: enabled }),
   setHighContrast: (enabled) => set({ highContrast: enabled }),
+  setToolbarPosition: (position) => set({ toolbarPosition: position }),
   
   addToast: (message, type = 'info', action) => {
     const id = crypto.randomUUID();
