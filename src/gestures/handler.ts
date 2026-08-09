@@ -33,7 +33,6 @@ export class GestureHandler {
   private pinchStartZoom = 1;
   private pinchStartMidX = 0;
   private pinchStartMidY = 0;
-  private isTwoFingerPanning = false;
   private twoFingerPanStartX = 0;
   private twoFingerPanStartY = 0;
   private isDrawing = false;
@@ -121,7 +120,6 @@ export class GestureHandler {
       this.pinchStartMidY = (points[0].currentY + points[1].currentY) / 2;
       this.twoFingerPanStartX = this.pinchStartMidX;
       this.twoFingerPanStartY = this.pinchStartMidY;
-      this.isTwoFingerPanning = false;
       this.cancelDrawing();
       return;
     }
@@ -203,39 +201,36 @@ export class GestureHandler {
       const midScreenX = (points[0].currentX + points[1].currentX) / 2 - rect.left;
       const midScreenY = (points[0].currentY + points[1].currentY) / 2 - rect.top;
 
-      // Detect if this is a pan or a zoom based on distance change vs midpoint movement
+      const state = useCanvasStore.getState();
+
+      // Apply zoom if distance changed (pinch gesture)
       const distChangeRatio = Math.abs(pinchDist - this.pinchStartDistance) / this.pinchStartDistance;
-      const midMoveDist = Math.hypot(midScreenX - (this.twoFingerPanStartX - rect.left), midScreenY - (this.twoFingerPanStartY - rect.top));
-      
-      // If distance changed significantly, it's a pinch-to-zoom
-      // If midpoint moved but distance stayed similar, it's a two-finger pan
-      if (distChangeRatio > 0.05) {
-        // Pinch-to-zoom
+      if (distChangeRatio > 0.01) {
         const scale = pinchDist / this.pinchStartDistance;
         const targetZoom = this.pinchStartZoom * scale;
-        const currentZoom = useCanvasStore.getState().zoom;
+        const currentZoom = state.zoom;
         const delta = targetZoom / currentZoom - 1;
-        useCanvasStore.getState().zoomAt({ x: midScreenX, y: midScreenY }, delta);
-        this.isTwoFingerPanning = false;
-      } else if (midMoveDist > 5) {
-        // Two-finger pan
-        if (!this.isTwoFingerPanning) {
-          this.isTwoFingerPanning = true;
-          const state = useCanvasStore.getState();
-          this.panStartViewportX = state.viewportX;
-          this.panStartViewportY = state.viewportY;
-          // Reset pan start to current midpoint to avoid jump
-          this.twoFingerPanStartX = midScreenX + rect.left;
-          this.twoFingerPanStartY = midScreenY + rect.top;
-        }
-        const dx = midScreenX - (this.twoFingerPanStartX - rect.left);
-        const dy = midScreenY - (this.twoFingerPanStartY - rect.top);
-        const state = useCanvasStore.getState();
-        state.setViewport(
-          this.panStartViewportX - dx / state.zoom,
-          this.panStartViewportY - dy / state.zoom
-        );
+        state.zoomAt({ x: midScreenX, y: midScreenY }, delta);
       }
+
+      // Always apply pan based on midpoint movement
+      // This works simultaneously with zoom - fingers naturally drift while pinching
+      const currentMidX = midScreenX + rect.left;
+      const currentMidY = midScreenY + rect.top;
+      const dx = currentMidX - this.twoFingerPanStartX;
+      const dy = currentMidY - this.twoFingerPanStartY;
+      
+      // Only apply pan if there's meaningful movement (avoid drift from tiny finger jitter)
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        state.setViewport(
+          state.viewportX - dx / state.zoom,
+          state.viewportY - dy / state.zoom
+        );
+        // Update pan start to current position for incremental panning
+        this.twoFingerPanStartX = currentMidX;
+        this.twoFingerPanStartY = currentMidY;
+      }
+
       canvasEngine.requestRender();
       return;
     }
@@ -404,7 +399,6 @@ export class GestureHandler {
 
     if (this.isPinching && this.pointers.size === 2) {
       this.isPinching = false;
-      this.isTwoFingerPanning = false;
       this.pointers.delete(e.pointerId);
       if (!this.pointers.size) this.isPanning = false;
       return;
