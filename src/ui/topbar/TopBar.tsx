@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Sun, Moon, Map } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useUIStore } from '../../state/uiStore';
 import { useCanvasStore } from '../../state/canvasStore';
 import { canvasEngine } from '../../engine/canvasEngine';
@@ -28,7 +28,7 @@ function invertBlackWhite(color: string): string {
 }
 
 export function TopBar() {
-  const { theme, toggleTheme, miniMapVisible, setMiniMapVisible } = useUIStore();
+  const { theme, toggleTheme } = useUIStore();
   const { zoom, setZoom, setViewport, setBackground } = useCanvasStore();
 
   const zoomPercent = Math.round(zoom * 100);
@@ -54,17 +54,6 @@ export function TopBar() {
 
       {/* Theme Toggle & Mini Map Toggle - Top Right */}
       <div className="flex gap-2 pointer-events-auto">
-        <motion.button
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2, delay: 0.1 }}
-          onClick={() => setMiniMapVisible(!miniMapVisible)}
-          className="toolbar-btn glassmorphism"
-          aria-label={miniMapVisible ? 'Hide minimap' : 'Show minimap'}
-          title={miniMapVisible ? 'Hide minimap' : 'Show minimap'}
-        >
-          {miniMapVisible ? <Map size={18} /> : <Map size={18} className="opacity-50" />}
-        </motion.button>
         <motion.button
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}

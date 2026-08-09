@@ -10,9 +10,9 @@ import { Toolbar } from './ui/toolbar/Toolbar';
 import { PagesButton } from './ui/toolbar/PagesButton';
 import { PageNavigator } from './ui/toolbar/PageNavigator';
 import { TopBar } from './ui/topbar/TopBar';
-import { MiniMap } from './ui/minimap/MiniMap';
 import { ToastContainer } from './ui/toast/Toast';
 import { SelectionOverlay } from './ui/overlay/SelectionOverlay';
+import { EraserCursor } from './ui/overlay/EraserCursor';
 
 // Lazy load heavy panels for better initial load
 const PagesPanel = lazy(() => import('./ui/panels/PagesPanel').then(m => ({ default: m.PagesPanel })));
@@ -149,7 +149,6 @@ function App() {
         toolSettings: uiState.toolSettings,
         recentColors: uiState.recentColors,
         smartShapeRecognition: uiState.smartShapeRecognition,
-        miniMapVisible: uiState.miniMapVisible,
         highContrast: uiState.highContrast,
       });
     } finally {
@@ -253,12 +252,12 @@ function App() {
           style={{ touchAction: 'none' }}
         />
         <SelectionOverlay />
+        <EraserCursor />
 
         <TopBar />
         <Toolbar />
         <PageNavigator />
         <PagesButton />
-        <MiniMap />
         <Suspense fallback={null}>
           <PagesPanel />
           <SettingsPanel />

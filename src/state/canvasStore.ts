@@ -57,7 +57,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   viewportX: 0,
   viewportY: 0,
   zoom: 1,
-  activeTool: 'pencil',
+  activeTool: 'pen',
   activeShape: null,
   objects: new Map(),
   isDrawing: false,

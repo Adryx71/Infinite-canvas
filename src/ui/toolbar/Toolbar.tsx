@@ -31,7 +31,6 @@ const shapeOptions: { id: ShapeType; icon: typeof Square; label: string }[] = [
 const PRIMARY_COLORS_LIGHT = ['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 const PRIMARY_COLORS_DARK = ['#FFFFFF', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 
-// TODO: This component is getting huge, might need to split it up
 export function Toolbar() {
   const { activeTool, setActiveTool, activeShape, setActiveShape, currentPageId, clearObjects } = useCanvasStore();
   const { toolbarOpacity, updateToolSettings, getToolSettings } = useUIStore();
@@ -144,7 +143,8 @@ export function Toolbar() {
               transition={{ duration: 0.15 }}
               className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 glassmorphism rounded-2xl p-4 min-w-[200px] z-10"
             >
-              {/* Color Grid — 2×3 primary colors */}
+              {/* Color Grid — 2×3 primary colors (hidden for eraser) */}
+              {activeTool !== 'eraser' && (
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {PRIMARY_COLORS.map((color) => (
                   <button
@@ -171,6 +171,7 @@ export function Toolbar() {
                   />
                 ))}
               </div>
+              )}
 
               {/* Thickness Slider */}
               <div className="mb-3">
@@ -201,7 +202,8 @@ export function Toolbar() {
                 />
               </div>
 
-              {/* Opacity Slider */}
+              {/* Opacity Slider (hidden for eraser) */}
+              {activeTool !== 'eraser' && (
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Opacity</span>
@@ -229,6 +231,7 @@ export function Toolbar() {
                   className="w-full accent-blue-500"
                 />
               </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

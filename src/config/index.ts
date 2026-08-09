@@ -1,5 +1,4 @@
 // Configuration constants for Infinity Board
-// TODO: Some of these might need tuning, especially the gesture thresholds
 
 export const CANVAS = {
   MIN_ZOOM: 0.05,
@@ -29,8 +28,6 @@ export const UI = {
   TOOLBAR_BORDER_RADIUS: 24,
   PANEL_TRANSITION_MS: 200,
   TOAST_DURATION_MS: 5000,
-  MINIMAP_WIDTH: 120,
-  MINIMAP_HEIGHT: 80,
   SAFE_AREA_MARGIN: 12,
 } as const;
 

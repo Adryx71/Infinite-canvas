@@ -24,6 +24,8 @@ export interface Stroke {
   opacity: number;
   smoothing: number;
   createdAt: number;
+  /** If true, this stroke was drawn by the eraser — matches background color */
+  isEraserStroke?: boolean;
 }
 
 export interface Shape {
@@ -76,7 +78,6 @@ export interface AppState {
   toolSettings: Record<string, ToolSettings>;
   recentColors: string[];
   smartShapeRecognition: boolean;
-  miniMapVisible: boolean;
   highContrast: boolean;
 }
 

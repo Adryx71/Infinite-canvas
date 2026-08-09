@@ -21,7 +21,6 @@ interface UIState {
   
   // Features
   smartShapeRecognition: boolean;
-  miniMapVisible: boolean;
   highContrast: boolean;
   
   // Toast
@@ -42,7 +41,6 @@ interface UIState {
   getToolSettings: (tool: string) => ToolSettings;
   addRecentColor: (color: string) => void;
   setSmartShapeRecognition: (enabled: boolean) => void;
-  setMiniMapVisible: (visible: boolean) => void;
   setHighContrast: (enabled: boolean) => void;
   addToast: (message: string, type?: 'info' | 'success' | 'error' | 'undo', action?: () => void) => void;
   removeToast: (id: string) => void;
@@ -69,7 +67,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   toolSettings: defaultToolSettings,
   recentColors: ['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'],
   smartShapeRecognition: false,
-  miniMapVisible: true,
   highContrast: false,
   toasts: [],
   
@@ -114,7 +111,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   
   setSmartShapeRecognition: (enabled) => set({ smartShapeRecognition: enabled }),
-  setMiniMapVisible: (visible) => set({ miniMapVisible: visible }),
   setHighContrast: (enabled) => set({ highContrast: enabled }),
   
   addToast: (message, type = 'info', action) => {

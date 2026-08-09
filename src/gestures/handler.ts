@@ -1,5 +1,5 @@
 import type { Point, Stroke, Shape, CanvasObject } from '../types';
-import { GESTURE } from '../config';
+import { GESTURE, BACKGROUND_COLORS, BACKGROUND_COLORS_DARK } from '../config';
 import { useCanvasStore } from '../state/canvasStore';
 import { useUIStore } from '../state/uiStore';
 import { useUndoRedoStore } from '../state/undoRedoStore';
@@ -31,6 +31,11 @@ export class GestureHandler {
   private isPinching = false;
   private pinchStartDistance = 0;
   private pinchStartZoom = 1;
+  private pinchStartMidX = 0;
+  private pinchStartMidY = 0;
+  private isTwoFingerPanning = false;
+  private twoFingerPanStartX = 0;
+  private twoFingerPanStartY = 0;
   private isDrawing = false;
   private spacePressed = false;
   // Resize state
@@ -64,6 +69,7 @@ export class GestureHandler {
     element.addEventListener('pointermove', this.handlePointerMove);
     element.addEventListener('pointerup', this.handlePointerUp);
     element.addEventListener('pointercancel', this.handlePointerCancel);
+    element.addEventListener('pointerleave', this.handlePointerLeave);
     element.addEventListener('wheel', this.handleWheel, { passive: false });
     element.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', this.handleKeyDown);
@@ -76,6 +82,7 @@ export class GestureHandler {
     this.container.removeEventListener('pointermove', this.handlePointerMove);
     this.container.removeEventListener('pointerup', this.handlePointerUp);
     this.container.removeEventListener('pointercancel', this.handlePointerCancel);
+    this.container.removeEventListener('pointerleave', this.handlePointerLeave);
     this.container.removeEventListener('wheel', this.handleWheel);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
@@ -109,6 +116,12 @@ export class GestureHandler {
       this.isPinching = true;
       this.pinchStartDistance = dist;
       this.pinchStartZoom = useCanvasStore.getState().zoom;
+      // Track midpoint for two-finger panning
+      this.pinchStartMidX = (points[0].currentX + points[1].currentX) / 2;
+      this.pinchStartMidY = (points[0].currentY + points[1].currentY) / 2;
+      this.twoFingerPanStartX = this.pinchStartMidX;
+      this.twoFingerPanStartY = this.pinchStartMidY;
+      this.isTwoFingerPanning = false;
       this.cancelDrawing();
       return;
     }
@@ -160,18 +173,24 @@ export class GestureHandler {
   };
 
   private handlePointerMove = (e: PointerEvent): void => {
+    const rect = this.container?.getBoundingClientRect();
+    if (!rect) return;
+
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    // Broadcast pointer position for UI overlays (eraser cursor, etc.)
+    // Must fire on ALL pointer moves, even before pointerdown (hover)
+    window.dispatchEvent(new CustomEvent('infinity-board:pointer-move', {
+      detail: { x: screenX, y: screenY },
+    }));
+
     const pointer = this.pointers.get(e.pointerId);
     if (!pointer) return;
 
     pointer.currentX = e.clientX;
     pointer.currentY = e.clientY;
     pointer.pressure = e.pressure;
-
-    const rect = this.container?.getBoundingClientRect();
-    if (!rect) return;
-
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
 
     const dist = Math.hypot(e.clientX - pointer.startX, e.clientY - pointer.startY);
     if (dist > GESTURE.LONG_PRESS_MAX_MOVEMENT) {
@@ -181,16 +200,39 @@ export class GestureHandler {
     if (this.isPinching && this.pointers.size === 2) {
       const points = Array.from(this.pointers.values());
       const pinchDist = this.getDistance(points[0], points[1]);
-      const scale = pinchDist / this.pinchStartDistance;
-      const targetZoom = this.pinchStartZoom * scale;
-      // Compute delta relative to current zoom, not start zoom
-      const currentZoom = useCanvasStore.getState().zoom;
-      const delta = targetZoom / currentZoom - 1;
-
       const midScreenX = (points[0].currentX + points[1].currentX) / 2 - rect.left;
       const midScreenY = (points[0].currentY + points[1].currentY) / 2 - rect.top;
 
-      useCanvasStore.getState().zoomAt({ x: midScreenX, y: midScreenY }, delta);
+      // Detect if this is a pan or a zoom based on distance change vs midpoint movement
+      const distChangeRatio = Math.abs(pinchDist - this.pinchStartDistance) / this.pinchStartDistance;
+      const midMoveDist = Math.hypot(midScreenX - (this.twoFingerPanStartX - rect.left), midScreenY - (this.twoFingerPanStartY - rect.top));
+      
+      // If distance changed significantly, it's a pinch-to-zoom
+      // If midpoint moved but distance stayed similar, it's a two-finger pan
+      if (distChangeRatio > 0.05) {
+        // Pinch-to-zoom
+        const scale = pinchDist / this.pinchStartDistance;
+        const targetZoom = this.pinchStartZoom * scale;
+        const currentZoom = useCanvasStore.getState().zoom;
+        const delta = targetZoom / currentZoom - 1;
+        useCanvasStore.getState().zoomAt({ x: midScreenX, y: midScreenY }, delta);
+        this.isTwoFingerPanning = false;
+      } else if (midMoveDist > 5) {
+        // Two-finger pan
+        if (!this.isTwoFingerPanning) {
+          this.isTwoFingerPanning = true;
+          const state = useCanvasStore.getState();
+          this.panStartViewportX = state.viewportX;
+          this.panStartViewportY = state.viewportY;
+        }
+        const dx = midScreenX - (this.twoFingerPanStartX - rect.left);
+        const dy = midScreenY - (this.twoFingerPanStartY - rect.top);
+        const state = useCanvasStore.getState();
+        state.setViewport(
+          this.panStartViewportX - dx / state.zoom,
+          this.panStartViewportY - dy / state.zoom
+        );
+      }
       canvasEngine.requestRender();
       return;
     }
@@ -359,6 +401,7 @@ export class GestureHandler {
 
     if (this.isPinching && this.pointers.size === 2) {
       this.isPinching = false;
+      this.isTwoFingerPanning = false;
       this.pointers.delete(e.pointerId);
       if (!this.pointers.size) this.isPanning = false;
       return;
@@ -439,6 +482,10 @@ export class GestureHandler {
       this.isDrawing = false;
       this.isPinching = false;
     }
+  };
+
+  private handlePointerLeave = (): void => {
+    window.dispatchEvent(new CustomEvent('infinity-board:pointer-leave'));
   };
 
   private handleWheel = (e: WheelEvent): void => {
@@ -542,33 +589,91 @@ export class GestureHandler {
   }
 
   private startErasing(screenX: number, screenY: number): void {
+    // Push undo state BEFORE erasing so the entire session is undoable
+    const state = useCanvasStore.getState();
+    if (state.currentPageId) {
+      const { pushUndo } = useUndoRedoStore.getState();
+      pushUndo(state.currentPageId, Array.from(state.objects.values()));
+    }
     this.isDrawing = true;
     this.lastEraserTime = Date.now();
-    this.handleErasing(screenX, screenY);
+    // Start a new eraser stroke (invisible cloak)
+    this.startEraserStroke(screenX, screenY);
+  }
+
+  private startEraserStroke(screenX: number, screenY: number): void {
+    const state = useCanvasStore.getState();
+    const uiState = useUIStore.getState();
+    const eraserSettings = uiState.getToolSettings('eraser');
+    const worldPoint = canvasEngine.screenToWorld(screenX, screenY);
+
+    // Get background color for the eraser stroke
+    const bgColor = this.getBackgroundColor(state.background, uiState.theme);
+
+    const stroke: Stroke = {
+      id: crypto.randomUUID(),
+      pageId: state.currentPageId || '',
+      kind: 'stroke',
+      tool: 'pencil',
+      points: [
+        {
+          x: worldPoint.x,
+          y: worldPoint.y,
+          pressure: 0.5,
+          t: Date.now(),
+        },
+      ],
+      color: bgColor,
+      width: eraserSettings.thickness,
+      opacity: 1,
+      smoothing: 0,
+      createdAt: Date.now(),
+      isEraserStroke: true,
+    };
+
+    state.startStroke(stroke);
   }
 
   private handleErasing(screenX: number, screenY: number): void {
     const state = useCanvasStore.getState();
     const worldPoint = canvasEngine.screenToWorld(screenX, screenY);
-    const eraserSettings = useUIStore.getState().getToolSettings('eraser');
-    const eraserRadius = eraserSettings.thickness / 2;
 
-    const objectsToRemove: string[] = [];
-    state.objects.forEach((obj) => {
-      if (this.isObjectNearPoint(obj, worldPoint, eraserRadius)) {
-        objectsToRemove.push(obj.id);
-      }
-    });
-
-    if (objectsToRemove.length > 0) {
-      state.removeObjects(objectsToRemove);
+    if (state.currentStroke && state.currentStroke.isEraserStroke) {
+      // Add point to the current eraser stroke (invisible cloak)
+      state.addPointToStroke({
+        x: worldPoint.x,
+        y: worldPoint.y,
+        pressure: 0.5,
+        t: Date.now(),
+      });
       canvasEngine.requestRender();
     }
   }
 
   private endErasing(): void {
+    const state = useCanvasStore.getState();
+    const completedStroke = state.endStroke();
+
+    if (completedStroke && completedStroke.isEraserStroke && completedStroke.points.length > 1) {
+      // Add the eraser stroke to the canvas
+      state.addObject(completedStroke);
+      const { pushUndo } = useUndoRedoStore.getState();
+      pushUndo(completedStroke.pageId, Array.from(state.objects.values()));
+    }
+
     this.isDrawing = false;
     this.autosave();
+  }
+
+  /**
+   * Returns the background color for the current theme and background type.
+   * Used by the eraser to draw invisible cloak strokes.
+   */
+  private getBackgroundColor(
+    background: import('../types').BackgroundType,
+    theme: 'light' | 'dark'
+  ): string {
+    return theme === 'dark' ? BACKGROUND_COLORS_DARK[background] : BACKGROUND_COLORS[background];
   }
 
   private isObjectNearPoint(

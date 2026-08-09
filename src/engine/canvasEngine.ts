@@ -5,7 +5,6 @@ import { useCanvasStore } from '../state/canvasStore';
 import { useUIStore } from '../state/uiStore';
 
 export class CanvasEngine {
-  // TODO: Maybe refactor this to use a proper state machine? Current approach works but feels messy
   private app: Application | null = null;
   private container: Container = new Container();
   private backgroundGraphics: Graphics = new Graphics();
@@ -36,7 +35,6 @@ export class CanvasEngine {
       autoDensity: true,
     });
 
-    // HACK: Need to cast this because PixiJS types are weird
     container.appendChild(this.app.canvas as HTMLCanvasElement);
     
     this.container.addChild(this.backgroundGraphics);
@@ -224,8 +222,16 @@ export class CanvasEngine {
       }
     });
 
-    // Render visible objects
-    visibleIds.forEach((id) => {
+    // Render visible objects — eraser strokes last (they mask/cover everything underneath)
+    const sortedIds = [...visibleIds].sort((a, b) => {
+      const objA = objects.get(a);
+      const objB = objects.get(b);
+      const aIsEraser = objA?.kind === 'stroke' && objA.isEraserStroke ? 1 : 0;
+      const bIsEraser = objB?.kind === 'stroke' && objB.isEraserStroke ? 1 : 0;
+      return aIsEraser - bIsEraser;
+    });
+
+    sortedIds.forEach((id) => {
       const obj = objects.get(id);
       if (!obj) return;
 
@@ -289,7 +295,7 @@ export class CanvasEngine {
       join: 'round' as any,
     });
 
-    // Highlighter uses multiply blend mode - not sure why this looks right but it does
+    // Highlighter uses multiply blend mode per PRD §10
     if (stroke.tool === 'highlighter') {
       graphics.blendMode = 'multiply' as any;
     }
