@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Settings } from 'lucide-react';
 import { useUIStore } from '../../state/uiStore';
 import { useCanvasStore } from '../../state/canvasStore';
 import { canvasEngine } from '../../engine/canvasEngine';
@@ -28,7 +28,7 @@ function invertBlackWhite(color: string): string {
 }
 
 export function TopBar() {
-  const { theme, toggleTheme } = useUIStore();
+  const { theme, toggleTheme, openSettingsPanel } = useUIStore();
   const { zoom, setZoom, setViewport, setBackground } = useCanvasStore();
 
   const zoomPercent = Math.round(zoom * 100);
@@ -40,19 +40,31 @@ export function TopBar() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-30 safe-top safe-left safe-right flex justify-between items-start p-2 sm:p-3 pointer-events-none">
-      {/* Zoom Indicator - Top Left */}
-      <motion.button
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.2, delay: 0.1 }}
-        onClick={handleZoomReset}
-        className="glassmorphism rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/90 dark:hover:bg-gray-800/90 transition-colors pointer-events-auto cursor-pointer"
-        title="Reset zoom to 100%"
-      >
-        {zoomPercent}%
-      </motion.button>
+      {/* Top Left - Zoom & Settings */}
+      <div className="flex flex-col gap-2 pointer-events-auto">
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2, delay: 0.1 }}
+          onClick={handleZoomReset}
+          className="glassmorphism rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/90 dark:hover:bg-gray-800/90 transition-colors cursor-pointer"
+          title="Reset zoom to 100%"
+        >
+          {zoomPercent}%
+        </motion.button>
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2, delay: 0.15 }}
+          onClick={openSettingsPanel}
+          className="glassmorphism rounded-lg w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-white/90 dark:hover:bg-gray-800/90 transition-colors cursor-pointer"
+          title="Settings"
+        >
+          <Settings size={18} />
+        </motion.button>
+      </div>
 
-      {/* Theme Toggle & Mini Map Toggle - Top Right */}
+      {/* Theme Toggle - Top Right */}
       <div className="flex gap-2 pointer-events-auto">
         <motion.button
           initial={{ opacity: 0, x: 20 }}
