@@ -224,6 +224,9 @@ export class GestureHandler {
           const state = useCanvasStore.getState();
           this.panStartViewportX = state.viewportX;
           this.panStartViewportY = state.viewportY;
+          // Reset pan start to current midpoint to avoid jump
+          this.twoFingerPanStartX = midScreenX + rect.left;
+          this.twoFingerPanStartY = midScreenY + rect.top;
         }
         const dx = midScreenX - (this.twoFingerPanStartX - rect.left);
         const dy = midScreenY - (this.twoFingerPanStartY - rect.top);
