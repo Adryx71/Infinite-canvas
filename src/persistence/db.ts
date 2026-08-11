@@ -95,9 +95,8 @@ export const pageRepo = {
 };
 
 export const strokeRepo = {
-  // TODO: Maybe cache these? Could improve performance on page switches
   async getByPage(pageId: string): Promise<Stroke[]> {
-    return db.strokes.where('pageId').equals(pageId).toArray();
+    return db.strokes.where('pageId').equals(pageId).sortBy('createdAt');
   },
   
   async add(stroke: Stroke) {
@@ -109,7 +108,6 @@ export const strokeRepo = {
   },
 
   /** Sync strokes: upsert current ones, delete any from DB not in the current list */
-  // FIXME: This could be more efficient but works for now
   async syncPage(pageId: string, currentStrokes: Stroke[]) {
     const currentIds = new Set(currentStrokes.map(s => s.id));
     await db.strokes.bulkPut(currentStrokes);
@@ -131,7 +129,7 @@ export const strokeRepo = {
 
 export const shapeRepo = {
   async getByPage(pageId: string): Promise<Shape[]> {
-    return db.shapes.where('pageId').equals(pageId).toArray();
+    return db.shapes.where('pageId').equals(pageId).sortBy('createdAt');
   },
   
   async add(shape: Shape) {

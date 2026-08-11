@@ -222,13 +222,15 @@ export class CanvasEngine {
       }
     });
 
-    // Render visible objects — eraser strokes last (they mask/cover everything underneath)
+    // Render visible objects in chronological creation order.
+    // This ensures eraser strokes only cover strokes that existed BEFORE them,
+    // while new strokes drawn AFTER the eraser remain visible on top.
     const sortedIds = [...visibleIds].sort((a, b) => {
       const objA = objects.get(a);
       const objB = objects.get(b);
-      const aIsEraser = objA?.kind === 'stroke' && objA.isEraserStroke ? 1 : 0;
-      const bIsEraser = objB?.kind === 'stroke' && objB.isEraserStroke ? 1 : 0;
-      return aIsEraser - bIsEraser;
+      const timeA = objA?.createdAt ?? 0;
+      const timeB = objB?.createdAt ?? 0;
+      return timeA - timeB;
     });
 
     sortedIds.forEach((id) => {
